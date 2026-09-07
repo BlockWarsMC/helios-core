@@ -5,6 +5,7 @@ export interface Asset {
     size: number
     url: string
     path: string
+    installOnce?: boolean
 }
 
 export enum HashAlgo {

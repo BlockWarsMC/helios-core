@@ -163,6 +163,10 @@ export class FullRepairReceiver implements Receiver {
         })
 
         for(const asset of this.assets) {
+            // Install-once downloads are verified before publication, or preserve an existing file.
+            if(asset.installOnce) {
+                continue
+            }
             if(asset.size !== receivedEach[asset.id]) {
                 log.warn(`Asset ${asset.id} declared a size of ${asset.size} bytes, but ${receivedEach[asset.id]} were received!`)
                 if(!await validateLocalFile(asset.path, asset.algo, asset.hash)) {

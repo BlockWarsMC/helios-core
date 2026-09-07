@@ -6,7 +6,7 @@ import { Asset, HashAlgo } from '../Asset'
 import { HeliosDistribution, HeliosModule, HeliosServer } from '../../common/distribution/DistributionFactory'
 import { Type } from 'helios-distribution-types'
 import { mcVersionAtLeast } from '../../common/util/MojangUtils'
-import { ensureDir, readJson, writeJson } from 'fs-extra'
+import { ensureDir, readJson, writeJson, pathExists, stat } from 'fs-extra'
 import StreamZip from 'node-stream-zip'
 import { dirname } from 'path'
 import { VersionJsonBase } from '../mojang/MojangTypes'
@@ -50,15 +50,38 @@ export class DistributionIndexProcessor extends IndexProcessor {
     private async validateModules(modules: HeliosModule[], accumulator: Asset[]): Promise<void> {
         for(const module of modules) {
             const hash = module.rawModule.artifact.MD5
+            const policy = module.rawModule.syncPolicy
+            if(policy != null && policy !== 'sync' && policy !== 'install-once') {
+                throw new AssetGuardError(`Invalid sync policy for ${module.rawModule.id}: ${policy}`)
+            }
+            if(policy != null && module.rawModule.type !== Type.File) {
+                throw new AssetGuardError(`Sync policies only apply to File modules: ${module.rawModule.id}`)
+            }
 
-            if(!await validateLocalFile(module.getPath(), HashAlgo.MD5, hash)) {
+            const installOnce = policy === 'install-once'
+            const filePath = module.getPath()
+            let valid: boolean
+            if(installOnce) {
+                if(!hash) {
+                    throw new AssetGuardError(`Install-once file requires an MD5 hash: ${module.rawModule.id}`)
+                }
+                valid = await pathExists(filePath)
+                if(valid && !(await stat(filePath)).isFile()) {
+                    throw new AssetGuardError(`Expected a file at ${filePath}`)
+                }
+            } else {
+                valid = await validateLocalFile(filePath, HashAlgo.MD5, hash)
+            }
+
+            if(!valid) {
                 accumulator.push({
                     id: module.rawModule.id,
                     hash: hash!,
                     algo: HashAlgo.MD5,
                     size: module.rawModule.artifact.size,
                     url: module.rawModule.artifact.url,
-                    path: module.getPath()
+                    path: filePath,
+                    ...(installOnce ? { installOnce: true } : {})
                 })
             }
 

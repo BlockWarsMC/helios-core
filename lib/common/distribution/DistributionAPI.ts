@@ -1,5 +1,5 @@
 import { resolve } from 'path'
-import { Distribution } from 'helios-distribution-types'
+import { Distribution } from './DistributionTypes'
 import got, { RequestError } from 'got'
 import { LoggerUtil } from '../../util/LoggerUtil'
 import { RestResponse, handleGotError, RestResponseStatus } from '../rest/RestResponse'

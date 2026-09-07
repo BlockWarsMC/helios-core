@@ -4,8 +4,11 @@ import { pipeline } from 'stream/promises'
 import { Asset } from './Asset'
 import * as fastq from 'fastq'
 import type { queueAsPromised } from 'fastq'
-import { ensureDir } from 'fs-extra'
-import { dirname } from 'path'
+import { ensureDir, pathExists, stat } from 'fs-extra'
+import { link, mkdtemp, rm } from 'fs/promises'
+import { dirname, join } from 'path'
+import { validateLocalFile } from '../common/util/FileUtils'
+import { AssetGuardError } from './AssetGuardError'
 import { LoggerUtil } from '../util/LoggerUtil'
 import { sleep } from '../util/NodeUtil'
 
@@ -29,7 +32,9 @@ export async function downloadQueue(assets: Asset[], onProgress: (received: numb
         }
     }
 
-    const wrap = (asset: Asset): Promise<void> => downloadFile(asset.url, asset.path, onEachProgress(asset))
+    const wrap = (asset: Asset): Promise<void> => asset.installOnce
+        ? downloadInstallOnce(asset, onEachProgress(asset))
+        : downloadFile(asset.url, asset.path, onEachProgress(asset))
 
     const q: queueAsPromised<Asset, void> = fastq.promise(wrap, 15)
 
@@ -37,6 +42,34 @@ export async function downloadQueue(assets: Asset[], onProgress: (received: numb
     await Promise.all(promises)
 
     return receivedTotals
+}
+
+async function downloadInstallOnce(asset: Asset, onProgress: (progress: Progress) => void): Promise<void> {
+    if(await pathExists(asset.path)) {
+        if(!(await stat(asset.path)).isFile()) {
+            throw new AssetGuardError(`Expected a file at ${asset.path}`)
+        }
+        return
+    }
+    await ensureDir(dirname(asset.path))
+    const tempDir = await mkdtemp(join(dirname(asset.path), '.helios-download-'))
+    const tempPath = join(tempDir, 'download')
+    try {
+        await downloadFile(asset.url, tempPath, onProgress)
+        if(!asset.hash || !await validateLocalFile(tempPath, asset.algo, asset.hash)) {
+            throw new AssetGuardError(`Hash mismatch for install-once file ${asset.id}`)
+        }
+        // Publish only complete downloads, without replacing a file created in the meantime.
+        try {
+            await link(tempPath, asset.path)
+        } catch(error) {
+            if((error as NodeJS.ErrnoException).code !== 'EEXIST' || !(await stat(asset.path)).isFile()) {
+                throw error
+            }
+        }
+    } finally {
+        await rm(tempDir, { recursive: true, force: true })
+    }
 }
 
 export async function downloadFile(url: string, path: string, onProgress?: (progress: Progress) => void): Promise<void> {
