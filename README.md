@@ -1,6 +1,8 @@
-# Helios-Core
+# BlockWars Helios Core
 
-A library containing core mechanisms for Helios Launcher
+Core mechanisms for BlockWarsLauncher, forked from
+[dscalzi/helios-core](https://github.com/dscalzi/helios-core).
+The fork is configured to publish as `@blockwarsmc/helios-core` through GitHub Packages.
 
 ### Requirements
 

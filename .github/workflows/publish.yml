@@ -1,0 +1,54 @@
+name: Publish to GitHub Packages
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'BlockWarsMC/helios-core'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://npm.pkg.github.com
+          scope: '@blockwarsmc'
+          cache: npm
+      - run: npm ci
+      - name: Check release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          node <<'NODE'
+          const { name, version } = require('./package.json')
+          const semver = require('semver')
+          if (name !== '@blockwarsmc/helios-core' || process.env.RELEASE_TAG !== `v${version}`) {
+            throw new Error('The release tag must match the package version and BlockWars package name')
+          }
+          const prerelease = semver.prerelease(version) !== null
+          if (prerelease !== (process.env.RELEASE_PRERELEASE === 'true')) {
+            throw new Error('The GitHub prerelease flag must match the package version')
+          }
+          NODE
+      - run: npm run lint
+      - run: npm run test:unit
+      - name: Publish package
+        run: npm publish --tag "$DIST_TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIST_TAG: ${{ github.event.release.prerelease && 'next' || 'latest' }}

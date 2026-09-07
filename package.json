@@ -1,7 +1,7 @@
 {
-  "name": "helios-core",
+  "name": "@blockwarsmc/helios-core",
   "version": "2.3.0",
-  "description": "A library containing core mechanisms for Helios Launcher",
+  "description": "Core launcher library for BlockWarsLauncher, forked from Helios Core",
   "main": "dist/index.js",
   "scripts": {
     "clean": "rimraf dist",
@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "cross-env TS_NODE_PROJECT='./tsconfig.test.json' NODE_ENV=test mocha -r ts-node/register --recursive test/**/**/*.ts",
     "bl": "npm run build && npm link",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "test:unit": "npm test -- --exclude test/mojang/net/ServerStatusAPITest.ts"
   },
   "exports": {
     ".": "./dist/index.js",
@@ -44,7 +45,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dscalzi/helios-core.git"
+    "url": "git+https://github.com/BlockWarsMC/helios-core.git"
   },
   "keywords": [
     "helios-launcher",
@@ -54,9 +55,9 @@
   "author": "Daniel Scalzi",
   "license": " LGPL-3.0-only",
   "bugs": {
-    "url": "https://github.com/dscalzi/helios-core/issues"
+    "url": "https://github.com/BlockWarsMC/helios-core/issues"
   },
-  "homepage": "https://github.com/dscalzi/helios-core#readme",
+  "homepage": "https://github.com/BlockWarsMC/helios-core#readme",
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.6.1",
     "@types/chai": "^4.3.20",
@@ -95,5 +96,11 @@
   },
   "files": [
     "dist"
-  ]
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }
