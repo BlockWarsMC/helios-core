@@ -1,6 +1,6 @@
 {
   "name": "@blockwarsmc/helios-core",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Core launcher library for BlockWarsLauncher, forked from Helios Core",
   "main": "dist/index.js",
   "scripts": {
